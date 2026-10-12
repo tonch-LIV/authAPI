@@ -1,7 +1,7 @@
 'use strict';
 
 /*
-  In this example, we directly export an anonymous function
+  directly exporting an anonymous function
 
   NOTE: this one has 4 parameters, which means Express knows intrinsically that it is for handling server errors
 
@@ -9,14 +9,14 @@
   our response as a JSON object
 */
 
-module.exports = function (err, req, res, next) {
+module.exports = function (error, req, res, next) {
+  console.error(error);
 
   // Sometimes, errors come in as an object, others as a string
-  const error = err.message ? err.message : err;
+  const status = error.status || 500;
 
-  const errorObject = {
-    status: 500,
-    message: error
-  };
-  res.status(500).json(errorObject);
+  res.status(status).json({
+    status,
+    message: error.message || String(error)
+  });
 };

@@ -3,22 +3,26 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const SECRET = process.env.SECRET || 'secretstring';
+const SECRET = process.env.SECRET;
+
+if (!SECRET) {
+  throw new Error('Missing SECRET environment variable');
+}
 
 const userModel = (sequelize, DataTypes) => {
   const model = sequelize.define('Users', {
-    username: { type: DataTypes.STRING, required: true, unique: true },
-    password: { type: DataTypes.STRING, required: true },
-    role: { type: DataTypes.ENUM('user', 'writer', 'editor', 'admin'), required: true, defaultValue: 'user'},
+    username: { type: DataTypes.STRING, allowNull: false, unique: true },
+    password: { type: DataTypes.STRING, allowNull: false },
+    role: { type: DataTypes.ENUM('user', 'writer', 'editor', 'admin'), allowNull: false, defaultValue: 'user'},
     token: {
       type: DataTypes.VIRTUAL,
       get() {
-        return jwt.sign({ username: this.username }, SECRET);
+        return jwt.sign(
+          { username: this.username },
+          SECRET,
+          { algorithm: 'HS256' }
+        );
       },
-      set(tokenObj) {
-        let token = jwt.sign(tokenObj, SECRET);
-        return token;
-      }
     },
     capabilities: {
       type: DataTypes.VIRTUAL,
@@ -34,6 +38,15 @@ const userModel = (sequelize, DataTypes) => {
     }
   });
 
+  model.prototype.toJSON = function () {
+    return {
+      id: this.id,
+      username: this.username,
+      role: this.role,
+      capabilities: this.capabilities,
+    };
+  };
+
   model.beforeCreate(async (user) => {
     let hashedPass = await bcrypt.hash(user.password, 10);
     user.password = hashedPass;
@@ -41,20 +54,43 @@ const userModel = (sequelize, DataTypes) => {
 
   model.authenticateBasic = async function (username, password) {
     const user = await this.findOne({ where: { username } });
+
+    if (!user) {
+      throw new Error('Invalid Login!');
+    }
+
     const valid = await bcrypt.compare(password, user.password);
-    if (valid) { return user; }
-    throw new Error('Invalid User');
+
+    if (!valid) {
+      throw new Error('Invalid Login');
+    }
+    
+    return user;
   };
 
   model.authenticateToken = async function (token) {
-    try {
-      const parsedToken = jwt.verify(token, SECRET);
-      const user = this.findOne({where: { username: parsedToken.username } });
-      if (user) { return user; }
-      throw new Error("User Not Found");
-    } catch (e) {
-      throw new Error(e.message)
+    const payload = jwt.verify(token, SECRET, {
+      algorithms: ['HS256'],
+    });
+
+    if (
+      typeof payload !== 'object' ||
+      payload === null ||
+      typeof payload.username !== 'string' ||
+      !payload.username
+    ) {
+      throw new Error('Invalid Login');
     }
+
+    const user = await this.findOne({
+      where: { username: payload.username } 
+    });
+    
+    if (!user) {
+      throw new Error("Invalid Login");
+    }
+
+    return user;
   };
 
   return model;

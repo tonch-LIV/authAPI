@@ -1,24 +1,30 @@
 'use strict';
 
-const { users } = require('../models')
+const { users } = require('../models/index.js');
 
 module.exports = async (req, res, next) => {
-
   try {
+    const authorization = req.headers.authorization || '';
+    const [scheme, token, extra] = authorization.trim().split(/\s+/);
 
-    if (!req.headers.authorization) { _authError() }
+    if (
+      scheme.toLowerCase() !== 'bearer' ||
+      !token ||
+      extra
+    ) {
+      throw new Error('Invalid Login')
+    }
 
-    const token = req.headers.authorization.split(' ').pop();
-    const validUser = await users.authenticateToken(token);
-    req.user = validUser;
-    req.token = validUser.token;
-    next();
+    // attaches authen user
+    req.user = await users.authenticateToken(token);
+    req.token = token; // token supplied by client
+  } catch (error) {
+    console.error(error);
 
-  } catch (e) {
-    _authError();
+    const authError = new Error('Invalid Login');
+    authError.status = 401;
+    return next(authError);
   }
 
-  function _authError() {
-    next('Invalid Login');
-  }
+  return next();
 }
