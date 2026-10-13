@@ -5,33 +5,42 @@
 // being the same and requiring their own schema. That's not very DRY!
 
 class DataCollection {
-
   constructor(model) {
     this.model = model;
   }
 
-  get(id) {
-    if (id) {
-      return this.model.findOne({ where: { id } });
+  async get(id) {
+    if (id !== undefined) {
+      return this.model.findByPk(id);
     }
-    else {
-      return this.model.findAll({});
+
+    return this.model.findAll();
+  }
+
+  async create(data) {
+    return this.model.create(data);
+  }
+
+  async update(id, data) {
+    const record = await this.model.findByPk(id);
+
+    if (!record) {
+      return null;
     }
+
+    return record.update(data);
   }
 
-  create(record) {
-    return this.model.create(record);
-  }
+  async delete(id) {
+    const record = await this.model.findByPk(id);
 
-  update(id, data) {
-    return this.model.findOne({ where: { id } })
-      .then(record => record.update(data));
-  }
+    if (!record) {
+      return null;
+    }
 
-  delete(id) {
-    return this.model.destroy({ where: { id }});
+    await record.destroy();
+    return {};
   }
-
 }
 
 module.exports = DataCollection;

@@ -9,7 +9,11 @@ const userModel = require('../auth/models/users.js');
 const environment = process.env.NODE_ENV;
 const DATABASE_URL = process.env.DATABASE_URL;
 
-const sequelize = environment === 'test' || !DATABASE_URL
+if (environment !== 'test' && !DATABASE_URL) {
+  throw new Error('Missing DATABASE_URL environment variable');
+}
+
+const sequelize = environment === 'test'
   ? new Sequelize({
       dialect: 'sqlite',
       storage: ':memory:',

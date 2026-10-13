@@ -13,7 +13,12 @@ module.exports = function (error, req, res, next) {
   console.error(error);
 
   // Sometimes, errors come in as an object, others as a string
-  const status = error.status || 500;
+  const validationError = [
+    'SequelizeValidationError',
+    'SequelizeUniqueConstraintError',
+  ].includes(error.name);
+  
+  const status = error.status || (validationError ? 400 : 500);
 
   res.status(status).json({
     status,

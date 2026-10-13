@@ -22,7 +22,7 @@ const userModel = (sequelize, DataTypes) => {
           SECRET,
           { algorithm: 'HS256' }
         );
-      },
+      }
     },
     capabilities: {
       type: DataTypes.VIRTUAL,
