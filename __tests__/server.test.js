@@ -316,4 +316,95 @@ describe('routing and error handling', () => {
       message: 'Simulated database failure',
     });
   });
+
+  test('user-list database failures return a JSON error', async () => {
+    const originalFindAll = users.findAll;
+
+    const lookup = jest.spyOn(users, 'findAll')
+      .mockImplementation(function (options) {
+        if (options?.plain === true) {
+          return originalFindAll.call(this, options);
+        }
+
+        return Promise.reject(new Error('User lookup failed'));
+      });
+
+    const response = await api.get('/users')
+      .set('Authorization', `Bearer ${tokens.admin}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.message).toBe('User lookup failed');
+    expect(lookup).toHaveBeenCalledTimes(2);
+  });
+
+  test.each([
+    ['create', 'post', '/api/v1/food', fixtures[0].data],
+    ['update', 'put', '/api/v1/food/1', fixtures[0].change],
+    ['delete', 'delete', '/api/v1/food/1', undefined],
+  ])('%s database failures return a JSON error', async (
+    operation,
+    method,
+    path,
+    body
+  ) => {
+    jest.spyOn(food, operation).mockRejectedValueOnce(
+      new Error('Database operation failed')
+    );
+
+    const call = api[method](path);
+
+    if (body !== undefined) {
+      call.send(body);
+    }
+
+    const response = await call;
+
+    expect(response.status).toBe(500);
+    expect(response.body.message).toBe('Database operation failed');
+  });
+
+  test('rejects signed tokens with an invalid username payload', async () => {
+    const token = jwt.sign(
+      { username: 123 },
+      process.env.SECRET
+    );
+
+    await api.get('/secret')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
+  test('ACL rejects a request without an authenticated user', () => {
+    const permissions = require('../src/auth/middleware/acl.js');
+    const next = jest.fn();
+
+    permissions('create')({}, {}, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+
+    const error = next.mock.calls[0][0];
+    expect(error.status).toBe(401);
+    expect(error.message).toBe('Invalid Login');
+  });
+
+  test('startup rejects a missing port', () => {
+    const { start } = require('../src/server.js');
+
+    expect(() => start()).toThrow('Missing Port');
+  });
+
+  test('startup returns its listener and registers the callback', () => {
+    const { start } = require('../src/server.js');
+    const listener = {};
+    const listen = jest.spyOn(server, 'listen').mockReturnValue(listener);
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    expect(start(3001)).toBe(listener);
+    expect(listen).toHaveBeenCalledWith(3001, expect.any(Function));
+
+    const callback = listen.mock.calls[0][1];
+    callback();
+
+    expect(log).toHaveBeenCalledWith('Listening on 3001');
+  });
 });
