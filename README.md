@@ -342,8 +342,7 @@ Record lookup, update, and deletion return 404 when the requested record does no
 ## Submission Links
 
 - Deployed API: optional; not included in this submission.
-- Merged pull request from dev to main: pending.
-- Whiteboard UML artifact: pending.
+- [Merged pull request from dev to main](https://github.com/tonch-LIV/authAPI/pull/1).
 
 ## AI Assistance
 
