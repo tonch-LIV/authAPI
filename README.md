@@ -427,6 +427,7 @@ Documentation contributions; `README.md`.
   - preserved authentication lookup while simulating user-list database failure; `users.findAll`.
 - **`.gitignore`**;
   - excluded generated coverage reports; `coverage/`.
+  - added local SQLite databases to list to prevent future accidental adds.
 - **`.env.example`**;
   - documented development environment, port, database URL, and signing-secret placeholders.
 - **`README.md`**;
